@@ -11,6 +11,8 @@ export default function Generator() {
   // State for the "Slot Machine"
   const [suggestion, setSuggestion] = useState(null);
   const [isSpinning, setIsSpinning] = useState(false);
+
+  const [selectedDays, setSelectedDays] = useState([]);
   
   // State for Filters
   const [filterTag, setFilterTag] = useState(null); // Null = All
@@ -106,6 +108,116 @@ export default function Generator() {
         ))}
       </div>
 
+      {/* --- WEEKLY PLAN OVERVIEW --- */}
+      <div>
+        <h3 className="text-lg font-bold text-gray-700 mb-4">This Week's Plan</h3>
+        <div className="space-y-3">
+        {/*}
+          {DAYS.map(day => (
+            <div key={day} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center font-bold text-gray-400 text-xs">
+                  {day.slice(0, 3).toUpperCase()}
+                </div>
+                <div>
+                  {weekPlan[day] ? (
+                    <span className="font-bold text-gray-800">{weekPlan[day]}</span>
+                  ) : (
+                    <span className="text-gray-400 italic text-sm">Not planned</span>
+                  )}
+                </div>
+              </div>
+              
+              {weekPlan[day] && (
+                <button 
+                  onClick={() => clearDay(day)}
+                  className="text-gray-300 hover:text-red-400"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ))}
+        */}
+          {DAYS.map(day => {
+            const hasMeal = !!weekPlan[day];
+            const isSelected = selectedDays.includes(day); // Check if this day is highlighted
+            
+            const toggleSelection = () => {
+              if (isSelected) {
+                setSelectedDays(selectedDays.filter(d => d !== day));
+              } else {
+                setSelectedDays([...selectedDays, day]);
+                
+                // OPTIONAL: If you still want it to pick a meal immediately when highlighted:
+                if (!hasMeal) {
+                  const existingMeals = Object.values(weekPlan).filter(m => m);
+                  if (existingMeals.length > 0) {
+                    const randomMeal = existingMeals[Math.floor(Math.random() * existingMeals.length)];
+                    updateDay(day, randomMeal);
+                  }
+                }
+              }
+            };
+
+            return (
+              <div 
+                key={day} 
+                onClick={toggleSelection}
+                className={`
+                  flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer
+                  ${isSelected || hasMeal 
+                    ? 'bg-blue-50 border-blue-300 shadow-md ring-1 ring-blue-300' 
+                    : 'bg-white border-gray-100 shadow-sm hover:border-blue-200'}
+                `}
+              >
+                <div className="flex items-center gap-4">
+                  {/* Day Circle */}
+                  <div className={`
+                    w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-colors
+                    ${isSelected || hasMeal ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-400'}
+                  `}>
+                    {day.slice(0, 3).toUpperCase()}
+                  </div>
+                  
+                  {/* Plan Text */}
+                  <div>
+                    {hasMeal ? (
+                      <span className="font-bold text-blue-900">{weekPlan[day]}</span>
+                    ) : (
+                      <span className="text-gray-400 italic text-sm">
+                        {isSelected ? 'Ready to plan...' : 'Click to select day'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Clear Button */}
+                <div className="flex items-center">
+                  {hasMeal && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation(); 
+                        clearDay(day);
+                        // Also remove highlight when clearing? Un-comment next line if so:
+                        // setSelectedDays(selectedDays.filter(d => d !== day));
+                      }}
+                      className="p-1 text-blue-400 hover:text-red-500 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* --- THE GENERATOR CARD --- */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center min-h-[200px] flex flex-col justify-center items-center mb-8 relative overflow-hidden">
         
@@ -174,39 +286,6 @@ export default function Generator() {
         )}
       </div>
 
-      {/* --- WEEKLY PLAN OVERVIEW --- */}
-      <div>
-        <h3 className="text-lg font-bold text-gray-700 mb-4">This Week's Plan</h3>
-        <div className="space-y-3">
-          {DAYS.map(day => (
-            <div key={day} className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center font-bold text-gray-400 text-xs">
-                  {day.slice(0, 3).toUpperCase()}
-                </div>
-                <div>
-                  {weekPlan[day] ? (
-                    <span className="font-bold text-gray-800">{weekPlan[day]}</span>
-                  ) : (
-                    <span className="text-gray-400 italic text-sm">Not planned</span>
-                  )}
-                </div>
-              </div>
-              
-              {weekPlan[day] && (
-                <button 
-                  onClick={() => clearDay(day)}
-                  className="text-gray-300 hover:text-red-400"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                    <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
