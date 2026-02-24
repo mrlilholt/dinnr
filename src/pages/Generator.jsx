@@ -75,19 +75,6 @@ export default function Generator() {
       <div className="mb-8">
         <div className="flex justify-between items-end mb-4">
           <h3 className="text-lg font-bold text-gray-700">This Week's Plan</h3>
-            {/* Only show the button if there is at least one UNLOCKED selected day */}
-            {selectedDays.filter(d => !lockedDays.includes(d)).length > 0 && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  generateForSelected();
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all"
-              >
-                {/* Show the count of only the days that WILL actually be changed */}
-                Magic Fill ({selectedDays.filter(d => !lockedDays.includes(d)).length} days)
-              </button>
-            )}
         </div>
 
         <div className="space-y-3">
@@ -187,6 +174,22 @@ export default function Generator() {
             );
           })}
         </div>
+        <br></br>
+        <div className="flex items-center mb-4">
+            {/* Only show the button if there is at least one UNLOCKED selected day */}
+            {selectedDays.filter(d => !lockedDays.includes(d)).length > 0 && (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  generateForSelected();
+                }}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all"
+              >
+                {/* Show the count of only the days that WILL actually be changed */}
+                Let's Mix it Up! ({selectedDays.filter(d => !lockedDays.includes(d)).length} days)
+              </button>
+            )}
+        </div>       
       </div>
 
       {/* --- CAPACITY ERROR MODAL --- */}
