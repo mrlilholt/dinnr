@@ -2,23 +2,36 @@ import { useState } from 'react';
 import { useData } from '../context/DataContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useNavigate } from 'react-router-dom';
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 export default function Generator() {
-  const { meals, weekPlan, HOUSEHOLD_ID } = useData();
+  // Pull lockedDays from useData context so it persists across navigation
+  const { meals, weekPlan, lockedDays, HOUSEHOLD_ID } = useData();
   const [selectedDays, setSelectedDays] = useState([]);
-  const [lockedDays, setLockedDays] = useState([]);
   const [shufflingDays, setShufflingDays] = useState([]);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [filterTag, setFilterTag] = useState(null); 
+  const [filterTag, setFilterTag] = useState(null);
+  
+  const navigate = useNavigate();
 
-  const toggleLock = (e, day) => {
+  // --- UPDATED: PERSISTENT LOCK TOGGLE ---
+  const toggleLock = async (e, day) => {
     e.stopPropagation();
-    if (lockedDays.includes(day)) {
-      setLockedDays(lockedDays.filter(d => d !== day));
-    } else {
-      setLockedDays([...lockedDays, day]);
+    
+    const isCurrentlyLocked = lockedDays.includes(day);
+    const newLockedDays = isCurrentlyLocked
+      ? lockedDays.filter((d) => d !== day)
+      : [...lockedDays, day];
+
+    try {
+      const householdRef = doc(db, "households", HOUSEHOLD_ID);
+      await updateDoc(householdRef, {
+        locked_days: newLockedDays
+      });
+    } catch (error) {
+      console.error("Error saving lock status:", error);
     }
   };
 
@@ -46,7 +59,6 @@ export default function Generator() {
         pool = pool.filter(m => m.tags?.includes(filterTag));
       }
 
-      // Final safety check before Firebase calls
       if (pool.length < targetDays.length) {
         setShowErrorModal(true);
         setShufflingDays([]);
@@ -73,8 +85,8 @@ export default function Generator() {
   return (
     <div className="pb-24 max-w-md mx-auto p-4">
       <div className="mb-8">
-        <div className="flex justify-between items-end mb-4">
-          <h3 className="text-lg font-bold text-gray-700">This Week's Plan</h3>
+        <div className="relative flex justify-center items-center mb-6 min-h-[40px]">
+          <h3 className="absolute left-0 text-lg font-bold text-gray-700">This Week's Plan</h3>
         </div>
 
         <div className="space-y-3">
@@ -84,17 +96,23 @@ export default function Generator() {
             const isLocked = lockedDays.includes(day);
 
             const handleDayClick = async () => {
-              // 1. If LOCKED: Toggle selection highlight only
               if (isLocked) {
                 setSelectedDays(isSelected ? selectedDays.filter(d => d !== day) : [...selectedDays, day]);
                 return;
               }
 
-              // 2. If HAS MEAL (Unlocked): Clear the meal (Click to Clear)
+              // --- UPDATED: CLEAR MEAL + REMOVE LOCK ---
               if (hasMeal) {
                 try {
                   const householdRef = doc(db, "households", HOUSEHOLD_ID);
-                  await updateDoc(householdRef, { [`week_plan.${day}`]: null });
+                  // Remove the lock if the day is being cleared
+                  const newLockedDays = lockedDays.filter((d) => d !== day);
+                  
+                  await updateDoc(householdRef, { 
+                    [`week_plan.${day}`]: null,
+                    locked_days: newLockedDays 
+                  });
+                  
                   setSelectedDays(selectedDays.filter(d => d !== day));
                 } catch (error) {
                   console.error("Error clearing day:", error);
@@ -102,14 +120,12 @@ export default function Generator() {
                 return;
               }
 
-              // 3. IF EMPTY: Toggle Selection with Capacity Check
               if (isSelected) {
-                // If already selected, always allow deselecting
                 setSelectedDays(selectedDays.filter(d => d !== day));
               } else {
-                // Check if we have enough unique meals to add another day
+                // Capacity check logic
                 const lockedMealCount = lockedDays.length;
-                const availableMealCount = meals.length; 
+                const availableMealCount = meals.length - lockedMealCount;
 
                 if (selectedDays.length >= availableMealCount) {
                   setShowErrorModal(true);
@@ -174,22 +190,39 @@ export default function Generator() {
             );
           })}
         </div>
-        <br></br>
-        <div className="flex items-center mb-4">
-            {/* Only show the button if there is at least one UNLOCKED selected day */}
-            {selectedDays.filter(d => !lockedDays.includes(d)).length > 0 && (
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  generateForSelected();
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all"
-              >
-                {/* Show the count of only the days that WILL actually be changed */}
-                Let's Mix it Up! ({selectedDays.filter(d => !lockedDays.includes(d)).length} days)
-              </button>
-            )}
-        </div>       
+        
+        <br />
+        
+        <div className="flex justify-center items-center">
+          {/* 1. Only show the container if the user has selected at least one day */}
+          {selectedDays.length > 0 && (
+            <>
+              {/* 2. IF there are unlocked selected days, show 'Mix it Up' */}
+              {selectedDays.filter(d => !lockedDays.includes(d)).length > 0 ? (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    generateForSelected();
+                  }}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95"
+                >
+                  Let's Mix it Up! ({selectedDays.filter(d => !lockedDays.includes(d)).length} days)
+                </button>
+              ) : (
+                /* 3. ELSE (All selected days are locked), show 'Go to Pantry' */
+                <button 
+                  onClick={() => navigate('/pantry')}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow-lg hover:bg-green-700 transition-all flex items-center gap-2 animate-in fade-in zoom-in duration-300"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                  </svg>
+                  Go to Pantry
+                </button>
+              )}
+            </>
+          )}
+        </div>     
       </div>
 
       {/* --- CAPACITY ERROR MODAL --- */}
