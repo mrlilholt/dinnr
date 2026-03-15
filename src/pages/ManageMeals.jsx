@@ -8,7 +8,8 @@ const PRESET_TAGS = ["Quick", "Healthy", "Weekend", "Takeout", "Cheat Meal"];
 
 export default function ManageMeals() {
   const { meals, loading } = useData();
-  const [newName, setNewName] = useState('');
+  const { HOUSEHOLD_ID } = useData();
+  const [newMealName, setNewMealName] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -23,20 +24,22 @@ export default function ManageMeals() {
 
   const handleAddMeal = async (e) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!newMealName.trim()) return;
 
     setIsSubmitting(true);
     try {
+      const mealsRef = collection(db, "households", HOUSEHOLD_ID, "meals");
+
       // Add to Firestore
-      await addDoc(collection(db, "meals"), {
-        name: newName,
+      await addDoc(mealsRef, {
+        name: newMealName,
         tags: selectedTags,
-        last_eaten: null, // Hasn't been eaten yet
+        //last_eaten: null, // Hasn't been eaten yet
         created_at: serverTimestamp()
       });
       
       // Reset form
-      setNewName('');
+      setNewMealName('');
       setSelectedTags([]);
     } catch (error) {
       console.error("Error adding meal:", error);
@@ -46,11 +49,12 @@ export default function ManageMeals() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Remove this meal forever?")) {
-      await deleteDoc(doc(db, "meals", id));
-    }
-  };
+const handleDelete = async (id) => {
+  if (window.confirm("Remove this meal forever?")) {
+    // Use the nested path
+    await deleteDoc(doc(db, "households", HOUSEHOLD_ID, "meals", id));
+  }
+};
 
   if (loading) return <div className="p-8 text-center">Loading meals...</div>;
 
@@ -68,8 +72,8 @@ export default function ManageMeals() {
             <label className="block text-sm font-medium text-gray-500 mb-1">Meal Name</label>
             <input 
               type="text" 
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              value={newMealName}
+              onChange={(e) => setNewMealName(e.target.value)}
               placeholder="e.g. Chicken Stir Fry"
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:outline-none"
             />
@@ -98,7 +102,7 @@ export default function ManageMeals() {
 
           <button 
             type="submit" 
-            disabled={!newName.trim() || isSubmitting}
+            disabled={!newMealName.trim() || isSubmitting}
             className="w-full bg-orange-600 text-white font-bold py-3 rounded-lg hover:bg-orange-700 disabled:opacity-50 transition-all"
           >
             {isSubmitting ? 'Saving...' : 'Add to Menu'}

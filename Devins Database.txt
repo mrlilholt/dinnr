@@ -1,3 +1,6 @@
+
+
+
 VITE_API_KEY=AIzaSyAHiB14jf9BLjaG2uTe0L6kno-PxmdG95g
 VITE_AUTH_DOMAIN=weekly-meal-mix.firebaseapp.com
 VITE_PROJECT_ID=weekly-meal-mix
